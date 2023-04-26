@@ -1,0 +1,9 @@
+{
+    "url": "https://github.com/Neargye/magic_enum/archive/refs/tags/v0.8.2.tar.gz",
+    "integrity": "sha256-Yr1wNLu/w9eAYAF2fVd1q0Lz/zO7ODZuHOshEC8N/5o=",
+    "strip_prefix": "magic_enum-0.8.2",
+    "patches": {
+        "magic_enum.patch": "sha256-NeJBX7vYUn12PSUidSC1TlpFUXE2pbLC0FirwKJTn9w="
+    },
+    "patch_strip": 1
+}

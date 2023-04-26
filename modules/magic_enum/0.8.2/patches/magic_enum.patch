@@ -1,0 +1,261 @@
+diff --git a/.bazelrc b/.bazelrc
+new file mode 100644
+index 0000000..88375a4
+--- /dev/null
++++ b/.bazelrc
+@@ -0,0 +1,19 @@
++common --enable_bzlmod
++build --enable_platform_specific_config
++build --incompatible_use_platforms_repo_for_constraints
++build --enable_runfiles
++build --incompatible_strict_action_env
++
++build:linux --host_platform=@magic_enum//bazel/platforms:linux
++build:linux --platforms=@magic_enum//bazel/platforms:linux
++
++build:macos --host_platform=@magic_enum//bazel/platforms:macos
++build:macos --platforms=@magic_enum//bazel/platforms:macos
++
++build:windows --host_platform=@magic_enum//bazel/platforms:windows
++build:windows --platforms=@magic_enum//bazel/platforms:windows
++
++common:ci --announce_rc
++test:ci --test_output=errors
++build:ci --curses=no
++
+diff --git a/BUILD.bazel b/BUILD.bazel
+index 7ad3c08..a9d3f1a 100644
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -1,3 +1,6 @@
++load("@rules_cc//cc:defs.bzl", "cc_library")
++load("//bazel:copts.bzl", "COPTS")
++
+ licenses(["notice"])
+ 
+ exports_files(["LICENSE"])
+@@ -6,58 +9,7 @@ package(default_visibility = ["//visibility:public"])
+ 
+ cc_library(
+     name = "magic_enum",
+-    hdrs = ["include/magic_enum.hpp", "include/magic_enum_format.hpp", "include/magic_enum_fuse.hpp", "include/magic_enum_switch.hpp"],
++    hdrs = glob(["include/*.hpp"]),
++    copts = COPTS,
+     includes = ["include"],
+ )
+-
+-cc_binary(
+-    name = "example",
+-    srcs = ["example/example.cpp"],
+-    copts = ["-std=c++17"],
+-    deps = [":magic_enum"],
+-)
+-
+-cc_binary(
+-    name = "enum_flag_example",
+-    srcs = ["example/enum_flag_example.cpp"],
+-    copts = ["-std=c++17"],
+-    deps = [":magic_enum"],
+-)
+-
+-cc_binary(
+-    name = "example_custom_name",
+-    srcs = ["example/example_custom_name.cpp"],
+-    copts = ["-std=c++17"],
+-    deps = [":magic_enum"],
+-)
+-
+-cc_library(
+-    name = "catch",
+-    srcs = [],
+-    hdrs = ["test/3rdparty/Catch2/include/catch2/catch.hpp"],
+-    strip_include_prefix = "test/3rdparty/Catch2/include",
+-)
+-
+-cc_test(
+-    name = "test",
+-    srcs = [
+-        "test/test.cpp",
+-    ],
+-    copts = ["-std=c++17"],
+-    deps = [
+-        ":catch",
+-        ":magic_enum",
+-    ],
+-)
+-
+-cc_test(
+-    name = "test_flags",
+-    srcs = [
+-        "test/test_flags.cpp",
+-    ],
+-    copts = ["-std=c++17"],
+-    deps = [
+-        ":catch",
+-        ":magic_enum",
+-    ],
+-)
+diff --git a/MODULE.bazel b/MODULE.bazel
+new file mode 100644
+index 0000000..6e78c23
+--- /dev/null
++++ b/MODULE.bazel
+@@ -0,0 +1,8 @@
++module(
++    name = "magic_enum",
++    version = "0.8.2",
++    compatibility_level = 0,
++)
++
++bazel_dep(name = "platforms", version = "0.0.6")
++bazel_dep(name = "rules_cc", version = "0.0.6")
+diff --git a/README.md b/README.md
+index aca0c5e..7f0c43e 100644
+--- a/README.md
++++ b/README.md
+@@ -263,7 +263,7 @@ Header-only C++17 library provides static reflection for enums, work with any en
+   ```
+   bazel build //...
+   bazel test //...
+-  bazel run //:example
++  bazel run //example
+   ```
+ 
+   (Note that you must use a supported compiler or specify it with `export CC= <compiler>`.)
+diff --git a/WORKSPACE b/WORKSPACE.bazel
+similarity index 100%
+rename from WORKSPACE
+rename to WORKSPACE.bazel
+diff --git a/bazel/BUILD.bazel b/bazel/BUILD.bazel
+new file mode 100644
+index 0000000..e69de29
+diff --git a/bazel/copts.bzl b/bazel/copts.bzl
+new file mode 100644
+index 0000000..1faee13
+--- /dev/null
++++ b/bazel/copts.bzl
+@@ -0,0 +1,4 @@
++COPTS = select({
++    "@bazel_tools//tools/cpp:msvc": ["/std:c++17", "/permissive-"],
++    "//conditions:default": ["-std=c++17"],
++})
+diff --git a/bazel/platforms/BUILD.bazel b/bazel/platforms/BUILD.bazel
+new file mode 100644
+index 0000000..ea8a807
+--- /dev/null
++++ b/bazel/platforms/BUILD.bazel
+@@ -0,0 +1,25 @@
++package(default_visibility = ["//:__subpackages__"])
++
++platform(
++    name = "linux",
++    constraint_values = [
++        "@platforms//os:linux",
++        "@bazel_tools//tools/cpp:clang",
++    ],
++)
++
++platform(
++    name = "macos",
++    constraint_values = [
++        "@platforms//os:macos",
++        "@bazel_tools//tools/cpp:clang",
++    ],
++)
++
++platform(
++    name = "windows",
++    constraint_values = [
++        "@platforms//os:windows",
++        "@bazel_tools//tools/cpp:msvc",
++    ],
++)
+diff --git a/example/BUILD.bazel b/example/BUILD.bazel
+new file mode 100644
+index 0000000..0553148
+--- /dev/null
++++ b/example/BUILD.bazel
+@@ -0,0 +1,28 @@
++load("@rules_cc//cc:defs.bzl", "cc_binary")
++load("@magic_enum//bazel:copts.bzl", "COPTS")
++
++_EXAMPLES = [
++    "enum_flag_example",
++    "example",
++    "example_containers_array",
++    "example_containers_bitset",
++    "example_containers_set",
++    "example_custom_name",
++    "example_switch",
++]
++
++[cc_binary(
++    name = example,
++    srcs = ["{}.cpp".format(example)],
++    deps = ["@magic_enum"],
++    copts = COPTS,
++) for example in _EXAMPLES]
++
++cc_binary(
++    name = "example_nonascii_name",
++    srcs = ["example_nonascii_name.cpp"],
++    deps = ["@magic_enum"],
++    copts = COPTS,
++    defines = ["MAGIC_ENUM_ENABLE_NONASCII"],
++    tags = ["manual"],
++)
+diff --git a/test/.bazelrc b/test/.bazelrc
+new file mode 100644
+index 0000000..3ed287d
+--- /dev/null
++++ b/test/.bazelrc
+@@ -0,0 +1,2 @@
++import %workspace%/../.bazelrc
++
+diff --git a/test/BUILD.bazel b/test/BUILD.bazel
+new file mode 100644
+index 0000000..872726a
+--- /dev/null
++++ b/test/BUILD.bazel
+@@ -0,0 +1,25 @@
++load("@rules_cc//cc:defs.bzl", "cc_test")
++load("@magic_enum//bazel:copts.bzl", "COPTS")
++
++# bazel central registry has a catch2 module, but is newer than the one included
++# in this repository
++cc_library(
++    name = "catch2",
++    includes = ["3rdparty/Catch2/include"],
++    hdrs = ["3rdparty/Catch2/include/catch2/catch.hpp"],
++    copts = COPTS,
++)
++
++_TESTS = [
++    "test",
++    "test_aliases",
++    "test_containers",
++    "test_flags",
++]
++
++[cc_test(
++    name = test,
++    srcs = ["{}.cpp".format(test)],
++    deps = ["@magic_enum", ":catch2"],
++    copts = COPTS,
++) for test in _TESTS]
+diff --git a/test/MODULE.bazel b/test/MODULE.bazel
+new file mode 100644
+index 0000000..2535c43
+--- /dev/null
++++ b/test/MODULE.bazel
+@@ -0,0 +1,7 @@
++module(name = "magic_enum_tests")
++
++bazel_dep(name = "magic_enum")
++bazel_dep(name = "platforms", version = "0.0.6")
++bazel_dep(name = "rules_cc", version = "0.0.6")
++
++local_path_override(module_name = "magic_enum", path = "..")
+diff --git a/test/WORKSPACE.bazel b/test/WORKSPACE.bazel
+new file mode 100644
+index 0000000..e69de29
