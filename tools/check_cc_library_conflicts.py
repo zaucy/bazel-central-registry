@@ -36,7 +36,7 @@ class TargetBuildResult:
     def print_result(self):
         print(f"{COLOR[self.status]}{self.status}\t\t{self.description}{RESET}")
 
-def check_cc_library_conflicts(modules, registry):
+def check_cc_library_conflicts(modules, registry, max_combinations):
     """
     Check if a modules cc_library targets conflict with other modules in the
     registry.
@@ -78,12 +78,15 @@ def check_cc_library_conflicts(modules, registry):
     build_file_path = tmp_dir.joinpath("BUILD.bazel")
     count = 0
     target_build_results = dict()
+
     with open(build_file_path, "w") as build_file:
-        for (a, b) in itertools.combinations(cc_library_targets, 2):
+        for combos in itertools.combinations(cc_library_targets, max_combinations):
             target_name = f"{count}"
-            target_build_results[f"//:{target_name}"] = TargetBuildResult(f"{a} + {b}")
-            build_file.write(f'# {a} + {b}\n')
-            build_file.write(f'cc_binary(name="{target_name}", deps=["{a}", "{b}"], srcs=["dummy_main.cc"])\n\n')
+            description = " + ".join(combos)
+            deps = ", ".join(f'"{t}"' for t in combos)
+            target_build_results[f"//:{target_name}"] = TargetBuildResult(" + ".join(combos))
+            build_file.write(f"# {description}\n")
+            build_file.write(f'cc_binary(name="{target_name}", deps=[{deps}], srcs=["dummy_main.cc"])\n\n')
             count += 1
 
     subprocess.run(
@@ -125,7 +128,11 @@ if __name__ == "__main__":
 
     parser.add_argument('modules', nargs = '+')
     parser.add_argument('--registry', default = '.')
+    parser.add_argument('--max_combinations', type=int)
 
     args = parser.parse_args()
+
+    if not args.max_combinations:
+        args.max_combinations = len(modules)
     
-    check_cc_library_conflicts(args.modules, args.registry)
+    check_cc_library_conflicts(args.modules, args.registry, args.max_combinations)
