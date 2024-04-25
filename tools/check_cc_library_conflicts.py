@@ -97,7 +97,11 @@ def check_cc_library_conflicts(modules, registry):
             if "targetCompleted" in msg["id"]:
                 label = msg["id"]["targetCompleted"]["label"]
                 payload = msg["completed"]
-                target_build_results[label].status = TargetBuildStatus.SUCCESS if payload["success"] else TargetBuildStatus.FAILURE
+                success = False
+                if "success" in payload:
+                    success = payload["success"]
+
+                target_build_results[label].status = TargetBuildStatus.SUCCESS if success else TargetBuildStatus.FAILURE
 
     for label in target_build_results:
         target_build_results[label].print_result()
