@@ -98,6 +98,5 @@ py_binary(
     srcs = ["check_cc_library_conflicts.py"],
     deps = [
         ":registry",
-        requirement("click"),
     ],
 )
