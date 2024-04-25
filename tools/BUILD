@@ -92,3 +92,12 @@ py_test(
         "registry",
     ],
 )
+
+py_binary(
+    name = "check_cc_library_conflicts",
+    srcs = ["check_cc_library_conflicts.py"],
+    deps = [
+        ":registry",
+        requirement("click"),
+    ],
+)
