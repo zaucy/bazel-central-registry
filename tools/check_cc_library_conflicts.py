@@ -56,6 +56,7 @@ def check_cc_library_conflicts(modules, registry, max_combinations):
             )
 
     tmp_dir = Path(tempfile.mkdtemp())
+    gen_source_starlark_path = Path(os.getcwd()).joinpath("tools").joinpath("gen_cc_library_test_source.cquery")
 
     with open(tmp_dir.joinpath("MODULE.bazel"), 'w') as module_bazel_file:
         for mod in modules:
@@ -72,12 +73,22 @@ def check_cc_library_conflicts(modules, registry, max_combinations):
         cwd = tmp_dir,
     )
     cc_library_targets = [line for line in result.stdout.split('\n') if line]
-
-    open(tmp_dir.joinpath("dummy_main.cc"), "w").write("int main() {}\n")
+    cc_library_target_headers = dict()
 
     build_file_path = tmp_dir.joinpath("BUILD.bazel")
     count = 0
     target_build_results = dict()
+
+    for target in cc_library_targets:
+        result = subprocess.run(
+            ["bazel", "cquery", target, "--output=starlark", f"--starlark:file={gen_source_starlark_path}"],
+            capture_output = True,
+            text = True,
+            cwd = tmp_dir,
+        )
+
+        headers = [line.strip() for line in result.stdout.split("\n") if line.strip()]
+        cc_library_target_headers[target] = headers
 
     with open(build_file_path, "w") as build_file:
         for combos in itertools.combinations(cc_library_targets, max_combinations):
@@ -85,10 +96,21 @@ def check_cc_library_conflicts(modules, registry, max_combinations):
             description = " + ".join(combos)
             deps = ", ".join(f'"{t}"' for t in combos)
             target_build_results[f"//:{target_name}"] = TargetBuildResult(" + ".join(combos))
-            build_file.write(f"# {description}\n")
-            build_file.write(f'cc_binary(name="{target_name}", deps=[{deps}], srcs=["dummy_main.cc"])\n\n')
-            count += 1
+            generated_source_path = tmp_dir.joinpath(f"{target_name}.cc")
 
+            with open(generated_source_path, "w") as generated_source:
+                for target in combos:
+                    generated_source.write(f"// {target} headers\n")
+                    for header in cc_library_target_headers[target]:
+                        generated_source.write(f"#include {header}\n")
+                    generated_source.write("\n")
+
+                generated_source.write("\nint main() {}\n")
+
+            build_file.write(f"# {description}\n")
+            build_file.write(f'cc_binary(name="{target_name}", deps=[{deps}], srcs=["{target_name}.cc"])\n\n')
+            count += 1
+    
     subprocess.run(
         ["bazel", "build", "//...", "-k", "--build_event_json_file=build.json"],
         cwd = tmp_dir,
@@ -107,14 +129,15 @@ def check_cc_library_conflicts(modules, registry, max_combinations):
                 target_build_results[label].status = TargetBuildStatus.SUCCESS if success else TargetBuildStatus.FAILURE
 
     for label in target_build_results:
-        target_build_results[label].print_result()
+        result = target_build_results[label]
+        result.print_result()
 
     subprocess.run(
         ["bazel", "shutdown"],
         cwd = tmp_dir,
     )
-
-    shutil.rmtree(tmp_dir)
+    
+    # shutil.rmtree(tmp_dir)
 
 if __name__ == "__main__":
     # Under 'bazel run' we want to run within the source folder instead of the execroot.

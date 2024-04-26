@@ -1,0 +1,12 @@
+def format(target):
+    target_providers = providers(target)
+
+    if not ("CcInfo" in target_providers):
+        return ""
+
+    cc_info = target_providers["CcInfo"]
+    headers = []
+    for hdr in cc_info.compilation_context.direct_public_headers:
+        # TODO: detect <> header include paths
+        headers.append("\"" + hdr.path + "\"")
+    return "\n".join(headers)
