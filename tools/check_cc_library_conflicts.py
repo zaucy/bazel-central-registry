@@ -27,6 +27,14 @@ COLOR = {
   TargetBuildStatus.FAILURE: RED,
 }
 
+_reports = []
+def report(msg):
+    _reports.append(msg)
+
+def print_reports():
+    for report in _reports:
+        print(report)
+
 class TargetBuildResult:
     description = ""
     status = TargetBuildStatus.NONE
@@ -34,8 +42,8 @@ class TargetBuildResult:
     def __init__(self, description):
         self.description = description
 
-    def print_result(self):
-        print(f"{COLOR[self.status]}{self.status}\t\t{self.description}{RESET}")
+    def report_result(self):
+        report(f"{COLOR[self.status]}{self.status}\t\t{self.description}{RESET}")
 
 def create_check_headers_dir(tmp_dir):
     check_dir = tmp_dir.joinpath("_check")
@@ -83,7 +91,9 @@ def get_module_headers(target, tmp_dir):
         for header_combos in itertools.combinations(headers, n):
             header_combos_list = list(header_combos)
             if check_target_headers_pass(target, header_combos_list, tmp_dir):
-                print(f"{YELLOW}SubsetHeadersWarning\t\tOnly {len(header_combos_list)}/{len(headers)} headers built successfully for {target}{RESET}")
+                report(f"{YELLOW}SubsetHeadersWarning\t\tOnly {len(header_combos_list)}/{len(headers)} headers built successfully for {target}{RESET}")
+                for failed_header in set(headers).difference(set(header_combos)):
+                    report(f"{YELLOW} - {failed_header}{RESET}")
                 return header_combos_list
 
     return []
@@ -178,7 +188,9 @@ def check_cc_library_conflicts(modules, registry, max_combinations):
 
     for label in target_build_results:
         result = target_build_results[label]
-        result.print_result()
+        result.report_result()
+
+    print_reports()
 
     subprocess.run(
         ["bazel", "shutdown"],
