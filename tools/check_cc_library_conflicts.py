@@ -13,6 +13,7 @@ from registry import RegistryClient
 
 RED = "\x1b[31m"
 GREEN = "\x1b[32m"
+YELLOW = "\x1b[33m"
 RESET = "\x1b[0m"
 
 class TargetBuildStatus(Enum):
@@ -35,6 +36,58 @@ class TargetBuildResult:
 
     def print_result(self):
         print(f"{COLOR[self.status]}{self.status}\t\t{self.description}{RESET}")
+
+def create_check_headers_dir(tmp_dir):
+    check_dir = tmp_dir.joinpath("_check")
+    os.mkdir(check_dir)
+
+def clean_check_headers_dir(tmp_dir):
+    check_dir = tmp_dir.joinpath("_check")
+    shutil.rmtree(check_dir)
+
+def check_target_headers_pass(target, headers, tmp_dir):
+    check_dir = tmp_dir.joinpath("_check")
+    build_file_path = check_dir.joinpath("BUILD.bazel")
+    check_source_path = check_dir.joinpath("check.cc")
+
+    with open(build_file_path, "w") as build_file:
+        build_file.write(f'cc_binary(name="_check", deps=["{target}"], srcs=["check.cc"])\n')
+    
+    with open(check_source_path, "w") as check_source:
+        for header in headers:
+            check_source.write(f"#include {header}\n");
+        check_source.write("\nint main() {}\n")
+
+    result = subprocess.run(
+        ["bazel", "build", "//_check"],
+        cwd = tmp_dir,
+    )
+
+    return result.returncode == 0
+
+
+def get_module_headers(target, tmp_dir):
+    gen_source_starlark_path = Path(os.getcwd()).joinpath("tools").joinpath("gen_cc_library_test_source.cquery")
+    result = subprocess.run(
+        ["bazel", "cquery", target, "--output=starlark", f"--starlark:file={gen_source_starlark_path}"],
+        capture_output = True,
+        text = True,
+        cwd = tmp_dir,
+    )
+
+    headers = [line.strip() for line in result.stdout.split("\n") if line.strip()]
+    if check_target_headers_pass(target, headers, tmp_dir):
+        return headers
+
+    for n in range(len(headers), 1, -1):
+        for header_combos in itertools.combinations(headers, n):
+            header_combos_list = list(header_combos)
+            if check_target_headers_pass(target, header_combos_list, tmp_dir):
+                print(f"{YELLOW}SubsetHeadersWarning\t\tOnly {len(header_combos_list)}/{len(headers)} headers built successfully for {target}{RESET}")
+                return header_combos_list
+
+    return []
+
 
 def check_cc_library_conflicts(modules, registry, max_combinations):
     """
@@ -79,16 +132,11 @@ def check_cc_library_conflicts(modules, registry, max_combinations):
     count = 0
     target_build_results = dict()
 
-    for target in cc_library_targets:
-        result = subprocess.run(
-            ["bazel", "cquery", target, "--output=starlark", f"--starlark:file={gen_source_starlark_path}"],
-            capture_output = True,
-            text = True,
-            cwd = tmp_dir,
-        )
 
-        headers = [line.strip() for line in result.stdout.split("\n") if line.strip()]
-        cc_library_target_headers[target] = headers
+    create_check_headers_dir(tmp_dir)
+    for target in cc_library_targets:
+        cc_library_target_headers[target] = get_module_headers(target, tmp_dir)
+    clean_check_headers_dir(tmp_dir)
 
     with open(build_file_path, "w") as build_file:
         for combos in itertools.combinations(cc_library_targets, max_combinations):
@@ -110,7 +158,7 @@ def check_cc_library_conflicts(modules, registry, max_combinations):
             build_file.write(f"# {description}\n")
             build_file.write(f'cc_binary(name="{target_name}", deps=[{deps}], srcs=["{target_name}.cc"])\n\n')
             count += 1
-    
+
     subprocess.run(
         ["bazel", "build", "//...", "-k", "--build_event_json_file=build.json"],
         cwd = tmp_dir,
@@ -136,8 +184,8 @@ def check_cc_library_conflicts(modules, registry, max_combinations):
         ["bazel", "shutdown"],
         cwd = tmp_dir,
     )
-    
-    # shutil.rmtree(tmp_dir)
+
+    shutil.rmtree(tmp_dir)
 
 if __name__ == "__main__":
     # Under 'bazel run' we want to run within the source folder instead of the execroot.
@@ -156,6 +204,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if not args.max_combinations:
-        args.max_combinations = len(modules)
+        args.max_combinations = len(args.modules)
     
     check_cc_library_conflicts(args.modules, args.registry, args.max_combinations)
