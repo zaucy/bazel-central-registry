@@ -93,7 +93,7 @@ def get_module_headers(target, tmp_dir):
             if check_target_headers_pass(target, header_combos_list, tmp_dir):
                 report(f"{YELLOW}SubsetHeadersWarning\t\tOnly {len(header_combos_list)}/{len(headers)} headers built successfully for {target}{RESET}")
                 for failed_header in set(headers).difference(set(header_combos)):
-                    report(f"{YELLOW} - {failed_header}{RESET}")
+                    report(f"{YELLOW} ❌ {failed_header}{RESET}")
                 return header_combos_list
 
     return []
