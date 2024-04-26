@@ -3,7 +3,7 @@ new file mode 100644
 index 000000000..d11e051cd
 --- /dev/null
 +++ b/BUILD.bazel
-@@ -0,0 +1,268 @@
+@@ -0,0 +1,267 @@
 +# Copyright The OpenTelemetry Authors
 +# SPDX-License-Identifier: Apache-2.0
 +
