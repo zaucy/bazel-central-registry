@@ -6,7 +6,7 @@ index 000000000..0719ffa8a
 @@ -0,0 +1,9 @@
 +module(
 +    name = "curl",
-+    version = "8.7.1",
++    version = "8.7.1.bcr.1",
 +    compatibility_level = 0,
 +)
 +
