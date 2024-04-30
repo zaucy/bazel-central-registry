@@ -1,6 +1,5 @@
 diff --git a/MODULE.bazel b/MODULE.bazel
 new file mode 100644
-index 000000000..0719ffa8a
 --- /dev/null
 +++ b/MODULE.bazel
 @@ -0,0 +1,9 @@

@@ -1,6 +1,5 @@
 diff --git a/lib/curl_config.h b/lib/curl_config.h
 new file mode 100755
-index 0000000..de5ad17
 --- /dev/null
 +++ b/lib/curl_config.h
 @@ -0,0 +1,34 @@
