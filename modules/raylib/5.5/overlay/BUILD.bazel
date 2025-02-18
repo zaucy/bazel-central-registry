@@ -32,12 +32,13 @@ cc_library(
         exclude = ["src/external/qoaplay.c"],
     ),
     hdrs = glob(
-        ["src/external/*.h"],
+        [
+            "src/external/*.h",
+            # awkward "headers"
+            "src/external/*.c",
+        ],
         exclude = ["src/external/dirent.h"],
-    ) + [
-        # awkward "headers"
-        "src/external/qoaplay.c",
-    ] + select({
+    ) + select({
         "@platforms//os:windows": ["src/external/dirent.h"],
         "//conditions:default": [],
     }),
@@ -81,7 +82,14 @@ cc_library(
         "@rules_cc//cc/compiler:msvc-cl": [
             "/DEFAULTLIB:winmm",
         ],
+        "@platforms//os:linux": [
+            "-lX11",
+        ],
         "//conditions:default": [],
+    }),
+    local_defines = select({
+        "@platforms//os:linux": ["_GLFW_X11"],
+        "@platforms//os:windows": ["_GLFW_WIN32"],
     }),
     strip_include_prefix = "src",
     visibility = ["//visibility:public"],
