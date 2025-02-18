@@ -1,0 +1,15 @@
+{
+    "integrity": "sha256-rqmOz1vFxeC3iadt4Ag6IacEVwUOpMwq7HVmk19eJY4=",
+    "overlay": {
+        "BUILD.bazel": "sha256-kJizwpJzPRdzpEyueQ3MMpSuvxxlkT8lJTpPtLP2u4Q=",
+        "MODULE.bazel": "sha256-g4WZQlLbU092soKnriJ3pIKGd8hOXqZYnVEgHZS+owo=",
+        "examples/audio/BUILD.bazel": "sha256-lS4YCMK/sJ3Frjt952HpmOs2Gi1lUMgDfFY4gkwWNX4=",
+        "examples/core/BUILD.bazel": "sha256-xvtyK9qOsLSxiv6usIUcr/x179hQIxpN7USYJ1GCxjk=",
+        "examples/shapes/BUILD.bazel": "sha256-sxYtUka8K9aGvKu665mz0iDcGbmrqpVosuAwhZk5yhw=",
+        "examples/text/BUILD.bazel": "sha256-hE+t6VKWI1n3x487phLk4oG+axAcbFzDl7zFSMYNr+8="
+    },
+    "patch_strip": 0,
+    "patches": {},
+    "strip_prefix": "raylib-5.5",
+    "url": "https://github.com/raysan5/raylib/archive/refs/tags/5.5.tar.gz"
+}
